@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+model User  {
+  id String @id @default(cuid())
+
+  email String @unique
+  password String
+
+  firstName String
+  lastName String
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  wallet Wallet?
+
+  refreshTOkens RefreshToken[]
+  
+  @@map("users")
+}
+
+
+model Wallet {
+  id String @id @default(cuid())
+
+  balance Decimal @default(0) @db.Decimal(19,4)
+
+  userId String @unique
+
+  user User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sentTransactions Transaction[] @relation("SentTransactions")
+  receivedTransactions Transaction[] @relation("ReceivedTransaction")
+
+  @@map("wallets")
+}
+
+
+model Transaction {
+  id String @id  @default(cuid())
+
+  amount Decimal  @db.Decimal(19, 4)
+
+  type  TransactionType
+
+  status TransactionStatus @default(PENDING)
+
+  description String?
+ //need more clarity 
+  senderWalletId String
+  senderWallet Wallet @relation("SentTransactions", fields: [senderWalletId], references: [id])
+
+  receiverWalletId String
+  receiverWallet Wallet @relation("ReceivedTransaction", fields: [receiverWalletId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+
+  @@index([senderWalletId])
+  @@index([receiverWalletId])
+
+  @@map("transaction")
+}
+
+
+model RefreshToken {
+  id String @id @default(cuid())
+
+  token String @unique
+
+  expiresAt DateTime
+  revoked Boolean @default(false)
+
+  userId String
+  user User @relation(fields:[userId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+
+enum TransactionType {
+  TRANSFER
+  DEPOSIT
+  WITHDRAWAL
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
