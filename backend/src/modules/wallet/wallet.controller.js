@@ -9,3 +9,4 @@ export const getWallet = asyncHandler(async (req,res) => {
         data: {wallet}
     })
 })
+

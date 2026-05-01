@@ -2,10 +2,10 @@ export const validate = (schema, source = 'body') => (req, res, next) => {
   const result = schema.safeParse(req[source]);
 
   if (!result.success) {
-    return res.status(422).json({
+    return res.status(409).json({
       success: false,
       message: 'Validation failed',
-      errors: result.error.errors.map((e) => ({
+      errors: result.error.issues.map((e) => ({
         field: e.path[0],
         message: e.message,
       })),

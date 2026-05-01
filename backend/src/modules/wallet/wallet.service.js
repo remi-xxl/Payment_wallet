@@ -4,7 +4,7 @@ import ApiError from "../../utils/ApiError.js";
 
 export async function getMywallet(userId) {
     const  wallet = await prisma.wallet.findUnique({
-        where: { userId},
+        where: {userId},
         select: {
             id: true,
             balance: true,
@@ -23,8 +23,5 @@ export async function getMywallet(userId) {
     }
 
     return wallet;
-}
 
-export async function fundWallet({ userId, amount}) {
-    
 }

@@ -71,7 +71,7 @@ export async function loginUser({ email, password }) {
     },
   });
   if (!user) {
-    throw new ApiError(404, " Invalid email or password ");
+    throw new ApiError(401, "Invalid email or password");
   }
 
   const comparePassword = await bcrypt.compare(password, user.password);
@@ -116,15 +116,15 @@ export async function logoutUser({ refreshToken }) {
   });
 }
 
-export async function refreshToken({ refrehToken }) {
+export async function refreshToken({ refreshToken }) {
   let decoded;
   try {
-    decoded = verifyRefreshToken(refrehToken);
+    decoded = verifyRefreshToken(refreshToken);
   } catch (error) {
     throw new ApiError(401, "invalid or expired refresh token");
   }
 
-  const tokenHash = hashToken(refrehToken);
+  const tokenHash = hashToken(refreshToken);
 
   const storedToken = await prisma.refreshToken.findUnique({
     where: { token: tokenHash },
@@ -166,13 +166,18 @@ export async function refreshToken({ refrehToken }) {
   return {
     tokens: {
       accessToken: newAccessToken,
-      refrehToken: newRefreshToken,
+      refreshToken: newRefreshToken,
     },
   };
 }
 
-async function saveRefreshToken(userId, refrehToken) {
-  const tokenHash = hashToken(refrehToken);
+async function saveRefreshToken(userId, refreshToken) {
+  const tokenHash = hashToken(refreshToken);
+
+  // Delete any existing refresh tokens for this user
+  await prisma.refreshToken.deleteMany({
+    where: { userId },
+  });
 
   // Calculate the expiry date from the string "7d"
   // We need to store it as an actual Date so we can compare it later
@@ -187,3 +192,7 @@ async function saveRefreshToken(userId, refrehToken) {
     },
   });
 }
+
+export async function register({}) {
+
+} 
