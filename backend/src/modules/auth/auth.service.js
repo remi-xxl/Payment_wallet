@@ -7,6 +7,7 @@ import {
   verifyRefreshToken,
 } from "../../utils/jwt.js";
 import ApiError from "../../utils/ApiError.js";
+import { generateNUBAN } from "../../utils/nuban.js";
 import { env } from "../../config/env.js";
 
 export async function registerUser({ email, password, firstName, lastName }) {
@@ -36,13 +37,23 @@ export async function registerUser({ email, password, firstName, lastName }) {
         createdAt: true,
       },
     });
+   const wallet = await tx.wallet.create({
+    data: {
+      userId: newUser.id,
 
-    await tx.wallet.create({
-      data: {
-        userId: newUser.id,
-      },
+      accountNumber: 'PENDING'
+    }, select: {
+      id: true,
+      serialNumber: true
+    },
+   });
+    const accountNumber = generateNUBAN(wallet.serialNumber);
+
+    await tx.wallet.update({
+      where: { id: wallet.id},
+      data: { accountNumber}
     });
-
+    
     return newUser;
   });
 
@@ -193,6 +204,5 @@ async function saveRefreshToken(userId, refreshToken) {
   });
 }
 
-export async function register({}) {
 
-} 
+
