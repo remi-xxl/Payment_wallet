@@ -37,7 +37,10 @@ model Wallet {
   id String @id @default(cuid())
 
   balance Decimal @default(0) @db.Decimal(19,4)
+  
+  serialNumber Int @unique @default(autoincrement())
 
+  accountNumber String @unique
   userId String @unique
 
   user User @relation(fields: [userId], references: [id])
@@ -93,17 +96,6 @@ model RefreshToken {
 
   createdAt DateTime @default(now())
 }
-
-// model GenerateAccountNumber{
-
-// }
-
-
-
-// def generate_account_number() -> str:
-   
-//     return str(random.randint(100000, 999999))
-
 
 enum TransactionType {
   TRANSFER

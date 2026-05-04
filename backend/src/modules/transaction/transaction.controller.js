@@ -3,11 +3,12 @@ import asyncHandler from "../../utils/asynchandler.js";
 
 
 export const transafer = asyncHandler(async (req, res) => {
-  const { recipientEmail, amount, description } = req.body;
+  const { recipientEmail, accountNumber, amount, description } = req.body;
 
   const transaction = await TransactionService.transfer({
     senderUserid: req.user.userId,
     recipientEmail,
+    accountNumber,
     amount,
     description,
   });
