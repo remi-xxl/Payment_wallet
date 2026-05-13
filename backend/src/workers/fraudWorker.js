@@ -44,6 +44,7 @@ async function processFraudJob(job) {
           severity: alert.severity,
         })),
       });
+      
 
       // STEP 5: Flag the transaction in the database
       // We record which rule triggered first as the main reason

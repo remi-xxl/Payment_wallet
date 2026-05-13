@@ -111,6 +111,8 @@ model FraudAlert {
 
   rule String 
 
+  reason String?
+
   severity FraudSeverity
 
   reviewed Boolean @default(false)
