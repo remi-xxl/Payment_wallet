@@ -29,9 +29,22 @@ export const env = {
     bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
   
     sessionSecret: requireEnv('SESSION_SECRET'),
+
+    redis: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    },
+
+    email: {
+        host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
+        port: parseInt(process.env.EMAIL_PORT || '587', 10),
+        user: process.env.EMAIL_USER || 'donald.cassin@ethereal.email',
+        pass: process.env.EMAIL_PASS || 'Hg2RbZHc6k5TxwszRv',
+        from: process.env.EMAIL_FROM || 'noreply@fintechapi.com'
+
 }
 
 
-
+}
 
 
