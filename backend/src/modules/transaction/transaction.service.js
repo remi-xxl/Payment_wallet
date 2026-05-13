@@ -1,5 +1,8 @@
 import prisma from "../../utils/prisma.js";
 import ApiError from "../../utils/ApiError.js";
+import { emailQueue, fraudQueue } from "../../queues/index.js";
+
+
 
 export async function transfer({
   senderUserid,
@@ -8,6 +11,7 @@ export async function transfer({
   amount,
   description,
 }) {
+  let recipientWalletId;
   const transaction = await prisma.$transaction(async (tx) => {
     // STEP 1: Get the sender's wallet
     //using this locks two request
@@ -33,7 +37,6 @@ export async function transfer({
         `Insufficient balance. Your balance is ₦${currentBlalance}`,
       );
     }
-      let recipientWalletId;
 
       if(recipientEmail) {
       //STEP 3: Find the recipent by email
@@ -107,9 +110,47 @@ export async function transfer({
     return newTransaction;
   });
 
+  //Background job
+
+  const [sender, receiver] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: senderUserid}
+    }),
+    prisma.wallet.findUnique({
+      where:{ id: recipientWalletId},
+      select: {
+        user: {
+          select: {email: true, firstName: true, lastName: true},
+        }
+      }
+    })
+  ]);
+
+  await emailQueue.add('transaction-receipt', {
+    senderEmail: sender.email,
+    senderName: `${sender.firstName} ${sender.lastName}`,
+    receiverEmail: receiver.user.email,
+    receiverName: `${receiver.user.firstName} ${receiver.user.lastName}`,
+    amount: amount,
+    transactionId: transaction.id,
+    description: description,
+    createdAt: transaction.createdAt
+  });
+
+  await fraudQueue.add('check-transaction', {
+    transactionId: transaction.id,
+    walletId: transaction.senderWalletId,
+    amount,
+  })
+
+
+console.log(`[TransactionService] Fraud check queued queued for transaction: ${transaction.id}`);
+
   //If ANY step above throws an error , NOTHING was saved
   return transaction;
+
 }
+
 
 //PAGINATION
 export async function getTransactionHistory({ userId, page, limit }) {

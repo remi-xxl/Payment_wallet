@@ -10,7 +10,8 @@ import { errorHandler, notFound } from './middlewares/error.middleware.js';
 import  {generalLimiter, corsOption} from './config/security.js'
 import helmet from 'helmet';
 import { sesssionMiddleware } from './config/session.js';
-
+import './workers/index.js'
+import { emailWorker } from './workers/index.js';
 
 const app = express();
 // ── Security middlewares ──────────────────────────────────────
@@ -46,5 +47,11 @@ app.use('/api/profile', profileRoutes)
 app.use(notFound)
 
 app.use(errorHandler)
+
+process.on('SIGTERM', async () => {
+    console.log('SIGTERM received, shutting down gracefully...');
+    await emailWorker.close();
+    process.exit(0);
+})
 
 export default app;
