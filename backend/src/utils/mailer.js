@@ -1,11 +1,10 @@
-
-import nodemailer from 'nodemailer';
-import { env } from '../config/env.js';
+import nodemailer from "nodemailer";
+import { env } from "../config/env.js";
 
 const transporter = nodemailer.createTransport({
-  host: env.email.host,        
-  port: env.email.port,         
-  
+  host: env.email.host,
+  port: env.email.port,
+
   // "secure: false" means we use STARTTLS not SSL.
   // Port 587 uses STARTTLS (upgrades to encrypted after connecting).
   // Port 465 uses SSL (encrypted from the start).
@@ -13,17 +12,16 @@ const transporter = nodemailer.createTransport({
   secure: false,
 
   auth: {
-    user: env.email.user,      
-    pass: env.email.pass,      
+    user: env.email.user,
+    pass: env.email.pass,
   },
 });
 
-
 transporter.verify((error) => {
   if (error) {
-    console.error(' Email transporter error:', error.message);
+    console.error(" Email transporter error:", error.message);
   } else {
-    console.log(' Email transporter ready');
+    console.log(" Email transporter ready");
   }
 });
 
@@ -41,23 +39,22 @@ export async function sendTransactionReceipt(data) {
 
   // Format the amount with commas e.g. 10000 → "10,000.00"
   // Intl.NumberFormat is a built-in JavaScript formatter
-  const formattedAmount = new Intl.NumberFormat('en-NG', {
-    style:    'currency',
-    currency: 'NGN',
+  const formattedAmount = new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
   }).format(amount);
 
   // Format the date nicely e.g. "January 15, 2024 at 2:30 PM"
-  const formattedDate = new Date(createdAt).toLocaleString('en-NG', {
-    dateStyle: 'long',
-    timeStyle: 'short',
+  const formattedDate = new Date(createdAt).toLocaleString("en-NG", {
+    dateStyle: "long",
+    timeStyle: "short",
   });
 
-    // ── Email to SENDER ────────────────────────────────────────
+  // ── Email to SENDER ────────────────────────────────────────
   const senderMail = {
-    from:    env.email.from,
-    to:      senderEmail,
+    from: env.email.from,
+    to: senderEmail,
     subject: `Debit Alert: ${formattedAmount} sent successfully`,
-
 
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -86,7 +83,7 @@ export async function sendTransactionReceipt(data) {
               </tr>
               <tr>
                 <td style="padding: 10px; color: #666;">Description</td>
-                <td style="padding: 10px;">${description || 'No description'}</td>
+                <td style="padding: 10px;">${description || "No description"}</td>
               </tr>
               <tr style="background: #f9f9f9;">
                 <td style="padding: 10px; color: #666;">Date</td>
@@ -120,8 +117,8 @@ export async function sendTransactionReceipt(data) {
   // ── Email to RECEIVER ────────────────────────────────────────
 
   const receiverMail = {
-    from:    env.email.from,
-    to:      receiverEmail,
+    from: env.email.from,
+    to: receiverEmail,
     subject: `Credit Alert: ${formattedAmount} received`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -150,7 +147,7 @@ export async function sendTransactionReceipt(data) {
               </tr>
               <tr>
                 <td style="padding: 10px; color: #666;">Description</td>
-                <td style="padding: 10px;">${description || 'No description'}</td>
+                <td style="padding: 10px;">${description || "No description"}</td>
               </tr>
               <tr style="background: #f9f9f9;">
                 <td style="padding: 10px; color: #666;">Date</td>
@@ -193,8 +190,12 @@ export async function sendTransactionReceipt(data) {
 
   // nodemailer returns a "messageId" for each sent email
   // Log the Ethereal preview URLs so you can view the emails
-  console.log(`📧 Sender receipt sent:   ${nodemailer.getTestMessageUrl(senderInfo)}`);
-  console.log(`📧 Receiver receipt sent: ${nodemailer.getTestMessageUrl(receiverInfo)}`);
+  console.log(
+    `📧 Sender receipt sent:   ${nodemailer.getTestMessageUrl(senderInfo)}`,
+  );
+  console.log(
+    `📧 Receiver receipt sent: ${nodemailer.getTestMessageUrl(receiverInfo)}`,
+  );
 
   return { senderInfo, receiverInfo };
 }
@@ -213,27 +214,30 @@ export async function sendMonthlyStatement(data) {
     transactionCount,
   } = data;
 
-  const formattedCredits = new Intl.NumberFormat('en-NG', {
-    style: 'currency', currency: 'NGN',
+  const formattedCredits = new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
   }).format(totalCredits);
 
-  const formattedDebits = new Intl.NumberFormat('en-NG', {
-    style: 'currency', currency: 'NGN',
+  const formattedDebits = new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
   }).format(totalDebits);
 
-  const formattedBalance = new Intl.NumberFormat('en-NG', {
-    style: 'currency', currency: 'NGN',
+  const formattedBalance = new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
   }).format(closingBalance);
 
   // Month name e.g. "January 2024"
-  const monthName = new Date(year, month - 1).toLocaleString('en-NG', {
-    month: 'long',
-    year:  'numeric',
+  const monthName = new Date(year, month - 1).toLocaleString("en-NG", {
+    month: "long",
+    year: "numeric",
   });
 
   const mail = {
-    from:    env.email.from,
-    to:      userEmail,
+    from: env.email.from,
+    to: userEmail,
     subject: `Your ${monthName} Account Statement`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -292,7 +296,9 @@ export async function sendMonthlyStatement(data) {
   };
 
   const info = await transporter.sendMail(mail);
-  console.log(`📧 Monthly statement sent: ${nodemailer.getTestMessageUrl(info)}`);
+  console.log(
+    `📧 Monthly statement sent: ${nodemailer.getTestMessageUrl(info)}`,
+  );
 
   return info;
 }
