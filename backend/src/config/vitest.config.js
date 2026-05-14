@@ -21,7 +21,7 @@ export default defineConfig({
     // e.g. one test deletes a user another test is using.
 
     env: {
-      DATABASE_URL: process.env.DATABASE_URL ,
+      DATABASE_URL: process.env.TEST_DATABASE_URL || process.env.DATABASE_URL,
       NODE_ENV:      'test',
     },
     pool: 'forks',
