@@ -14,7 +14,7 @@ function getUniqueEmail(base) {
 // Helper: register a user and return their access token
 async function registerUser(email, firstName = 'John', lastName = 'Doe') {
   const res = await request
-    .post('/api/auth/register')
+    .post('/api/v1/auth/register')
     .send({
       email,
       password:  'password123',
@@ -31,11 +31,11 @@ async function registerUser(email, firstName = 'John', lastName = 'Doe') {
 
 describe('Transaction Endpoints', () => {
 
-  describe('POST /api/transactions/transfer', () => {
+  describe('POST /api/v1/transactions/transfer', () => {
 
     it('should not transfer without authentication', async () => {
       const response = await request
-        .post('/api/transactions/transfer')
+        .post('/api/v1/transactions/transfer')
         .send({
           recipientEmail: getUniqueEmail('recipient'),
           amount:         500,
@@ -47,13 +47,13 @@ describe('Transaction Endpoints', () => {
     });
   });
 
-  describe('GET /api/transactions/history', () => {
+  describe('GET /api/v1/transactions/history', () => {
 
     it('should return transaction history for authenticated user', async () => {
       const user = await registerUser(getUniqueEmail('history'), 'Hist', 'User');
 
       const response = await request
-        .get('/api/transactions/history')
+        .get('/api/v1/transactions/history')
         .set('Authorization', `Bearer ${user.accessToken}`);
 
       expect(response.status).toBe(200);
@@ -64,7 +64,7 @@ describe('Transaction Endpoints', () => {
 
     it('should not return history without authentication', async () => {
       const response = await request
-        .get('/api/transactions/history');
+        .get('/api/v1/transactions/history');
 
       expect(response.status).toBe(401);
       expect(response.body.success).toBe(false);
@@ -74,7 +74,7 @@ describe('Transaction Endpoints', () => {
       const user = await registerUser(getUniqueEmail('notrans'), 'No', 'Trans');
 
       const response = await request
-        .get('/api/transactions/history')
+        .get('/api/v1/transactions/history')
         .set('Authorization', `Bearer ${user.accessToken}`);
 
       expect(response.status).toBe(200);

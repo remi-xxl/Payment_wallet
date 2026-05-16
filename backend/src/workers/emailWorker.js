@@ -46,6 +46,7 @@ export const emailWorker = new Worker("email", processEmailJob, {
 });
 
 
+
 //---WORKER EVENT LISTENER----
 
 emailWorker.on('completed', (job) => {

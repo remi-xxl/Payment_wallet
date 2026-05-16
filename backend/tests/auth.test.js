@@ -17,11 +17,11 @@ function getUniqueEmail(base) {
 
 describe('Auth Endpoints', () => {
 
-  describe('POST /api/auth/register', () => {
+  describe('POST /api/v1/auth/register', () => {
     it('should register a new user and return tokens', async () => {
       const email = getUniqueEmail('register1');
       const response = await request
-        .post('/api/auth/register')
+        .post('/api/v1/auth/register')
         .send({
           email,
           password:  'password123',
@@ -44,7 +44,7 @@ it('should create a wallet for the new user', async () => {
   const email = getUniqueEmail('wallet1');
   
   // 1. Register
-  const regResponse = await request.post('/api/auth/register').send({
+  const regResponse = await request.post('/api/v1/auth/register').send({
     email,
     password: 'password123',
     firstName: 'Jane',
@@ -62,27 +62,27 @@ it('should create a wallet for the new user', async () => {
       const email = getUniqueEmail('duplicate');
       const payload = { email, password: 'password123', firstName: 'A', lastName: 'B' };
 
-      await request.post('/api/auth/register').send(payload);
-      const response = await request.post('/api/auth/register').send(payload);
+      await request.post('/api/v1/auth/register').send(payload);
+      const response = await request.post('/api/v1/auth/register').send(payload);
 
       expect([409, 422]).toContain(response.status);
 expect(response.body.message).toMatch(/validation failed|already registered/i);
     });
   });
 
-  describe('POST /api/auth/login', () => {
+  describe('POST /api/v1/auth/login', () => {
     it('should login with correct credentials', async () => {
       const email = getUniqueEmail('login-success');
       const password = 'password123';
 
-      await request.post('/api/auth/register').send({
+      await request.post('/api/v1/auth/register').send({
         email, password, firstName: 'John', lastName: 'Doe'
       });
 
       // Clean up any leftover refresh tokens before login
       await prisma.refreshToken.deleteMany({ where: { user: { email } } });
 
-      const response = await request.post('/api/auth/login').send({ email, password });
+      const response = await request.post('/api/v1/auth/login').send({ email, password });
 
       expect(response.status).toBe(200);
       expect(response.body.data.accessToken).toBeDefined();
@@ -91,11 +91,11 @@ expect(response.body.message).toMatch(/validation failed|already registered/i);
 
     it('should not login with wrong password', async () => {
       const email = getUniqueEmail('login-fail');
-      await request.post('/api/auth/register').send({
+      await request.post('/api/v1/auth/register').send({
         email, password: 'password123', firstName: 'John', lastName: 'Doe'
       });
 
-      const response = await request.post('/api/auth/login').send({
+      const response = await request.post('/api/v1/auth/login').send({
         email,
         password: 'wrongpassword',
       });
@@ -105,7 +105,7 @@ expect(response.body.message).toMatch(/validation failed|already registered/i);
     });
 
     it('should return 401 for non-existent email (Security Best Practice)', async () => {
-      const response = await request.post('/api/auth/login').send({
+      const response = await request.post('/api/v1/auth/login').send({
         email: getUniqueEmail('ghost'),
         password: 'password123',
       });
