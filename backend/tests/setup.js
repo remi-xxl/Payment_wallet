@@ -23,7 +23,7 @@ import { execSync } from 'child_process';
 beforeAll(async () => {
   console.log('Test database:', process.env.DATABASE_URL);
   // Push schema to test database
-  execSync('npx prisma db push --skip-generate', {
+  execSync('npx prisma db push --accept-data-loss', {
     env: {
       ...process.env,
     },

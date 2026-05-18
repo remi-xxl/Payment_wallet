@@ -7,6 +7,7 @@ export async function getMywallet(userId) {
         where: {userId},
         select: {
             id: true,
+            accountNumber: true,
             balance: true,
             createdAt: true,
             user: {

@@ -1,12 +1,17 @@
 import prisma from "../../utils/prisma.js";
 import ApiError from "../../utils/ApiError.js";
+import { emailQueue, fraudQueue } from "../../queues/index.js";
+
+
 
 export async function transfer({
   senderUserid,
   recipientEmail,
+  accountNumber,
   amount,
   description,
 }) {
+  let recipientWalletId;
   const transaction = await prisma.$transaction(async (tx) => {
     // STEP 1: Get the sender's wallet
     //using this locks two request
@@ -33,7 +38,8 @@ export async function transfer({
       );
     }
 
-    //STEP 3: Find the recipent by email
+      if(recipientEmail) {
+      //STEP 3: Find the recipent by email
     const recipient = await tx.user.findUnique({
       where: { email: recipientEmail },
       select: {
@@ -42,7 +48,7 @@ export async function transfer({
       },
     });
 
-    if (!recipient) {
+     if (!recipient) {
       throw new ApiError(404, "Recipient not found");
     }
     //Sender can't money to sender
@@ -54,6 +60,24 @@ export async function transfer({
       throw new ApiError(400, "Recipient does not have a wallet");
     }
 
+    recipientWalletId = recipient.wallet.id;
+      } else {
+        const recipientWallet = await tx.wallet.findUnique({
+          where: { accountNumber},
+          select: { id: true, userId: true}
+        });
+
+        if(!recipientWallet) {
+          throw new ApiError(404, 'No wallet found with this account number')
+        }
+
+        if(recipientWallet.userId === senderUserid) {
+          throw new ApiError(400, "You cannot transfer money to yourself");
+        }
+
+        recipientWalletId = recipientWallet.id;
+      }
+     
     // STEP 4: Deduct from sender
     //   UPDATE wallets SET balance = balance - amount WHERE id = ?
     // This is safe because the subtraction happens INSIDE the database,
@@ -66,7 +90,7 @@ export async function transfer({
 
     // STEP 5: Add to recipient
     await tx.wallet.update({
-      where: { id: recipient.wallet.id },
+      where: { id: recipientWalletId },
       data: { balance: { increment: amount } },
     });
 
@@ -79,16 +103,54 @@ export async function transfer({
         status: "SUCCESS",
         description,
         senderWalletId: senderWallet.id,
-        receiverWalletId: recipient.wallet.id,
+        receiverWalletId: recipientWalletId,
       },
     });
 
     return newTransaction;
   });
 
+  //Background job
+
+  const [sender, receiver] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: senderUserid}
+    }),
+    prisma.wallet.findUnique({
+      where:{ id: recipientWalletId},
+      select: {
+        user: {
+          select: {email: true, firstName: true, lastName: true},
+        }
+      }
+    })
+  ]);
+
+  await emailQueue.add('transaction-receipt', {
+    senderEmail: sender.email,
+    senderName: `${sender.firstName} ${sender.lastName}`,
+    receiverEmail: receiver.user.email,
+    receiverName: `${receiver.user.firstName} ${receiver.user.lastName}`,
+    amount: amount,
+    transactionId: transaction.id,
+    description: description,
+    createdAt: transaction.createdAt
+  });
+
+  await fraudQueue.add('check-transaction', {
+    transactionId: transaction.id,
+    walletId: transaction.senderWalletId,
+    amount,
+  })
+
+
+console.log(`[TransactionService] Fraud check queued queued for transaction: ${transaction.id}`);
+
   //If ANY step above throws an error , NOTHING was saved
   return transaction;
+
 }
+
 
 //PAGINATION
 export async function getTransactionHistory({ userId, page, limit }) {

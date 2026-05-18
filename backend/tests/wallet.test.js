@@ -16,7 +16,7 @@ async function registerUser(email = undefined, firstName = 'John', lastName = 'D
   if (!email) email = getUniqueEmail('wallet');
   
   const response = await request
-    .post('/api/auth/register')
+    .post('/api/v1/auth/register')
     .send({
       email,
       password:  'password123',
@@ -33,10 +33,10 @@ async function registerUser(email = undefined, firstName = 'John', lastName = 'D
 
 describe('Wallet Endpoints', () => {
 
-  describe('GET /api/wallet/me', () => {
+  describe('GET /api/v1/wallet/me', () => {
 
     it('should not return wallet without a token', async () => {
-      const response = await request.get('/api/wallet/me');
+      const response = await request.get('/api/v1/wallet/me');
 
       expect(response.status).toBe(401);
       expect(response.body.success).toBe(false);
@@ -46,7 +46,7 @@ describe('Wallet Endpoints', () => {
       const user = await registerUser(getUniqueEmail('wallet-test'), 'Wallet', 'Test');
 
       const response = await request
-        .get('/api/wallet/me')
+        .get('/api/v1/wallet/me')
         .set('Authorization', `Bearer ${user.accessToken}`);
 
       expect(response.status).toBe(200);

@@ -37,7 +37,10 @@ model Wallet {
   id String @id @default(cuid())
 
   balance Decimal @default(0) @db.Decimal(19,4)
+  
+  serialNumber Int @unique @default(autoincrement())
 
+  accountNumber String @unique
   userId String @unique
 
   user User @relation(fields: [userId], references: [id])
@@ -62,6 +65,11 @@ model Transaction {
   status TransactionStatus @default(PENDING)
 
   description String?
+
+
+  flagged Boolean @default(false)
+
+  flagReason String?
  //need more clarity 
   senderWalletId String
   senderWallet Wallet @relation("SentTransactions", fields: [senderWalletId], references: [id])
@@ -75,7 +83,6 @@ model Transaction {
 
   @@index([senderWalletId])
   @@index([receiverWalletId])
-
   @@map("transaction")
 }
 
@@ -94,16 +101,31 @@ model RefreshToken {
   createdAt DateTime @default(now())
 }
 
-// model GenerateAccountNumber{
 
-// }
+model FraudAlert {
+  id String @id @default(cuid())
 
+  transactionId String
 
+  walletId String
 
-// def generate_account_number() -> str:
-   
-//     return str(random.randint(100000, 999999))
+  rule String 
 
+  reason String?
+
+  severity FraudSeverity
+
+  reviewed Boolean @default(false)
+
+  createdAt DateTime @default(now())
+@@map("fraud_alerts")
+}
+
+enum FraudSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
 
 enum TransactionType {
   TRANSFER
