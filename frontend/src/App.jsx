@@ -137,7 +137,7 @@ function App() {
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800">Fintech App</h1>
+            <h1 className="text-3xl font-bold text-gray-800">PayFast</h1>
             <p className="text-gray-500 mt-1">Secure banking at your fingertips</p>
           </div>
 
@@ -187,7 +187,7 @@ function App() {
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-white shadow-sm border-b">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-800">Fintech App</h1>
+          <h1 className="text-xl font-bold text-gray-800">PayFast</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">Welcome, {user.firstName}</span>
             <button onClick={handleLogout} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg transition">Logout</button>
