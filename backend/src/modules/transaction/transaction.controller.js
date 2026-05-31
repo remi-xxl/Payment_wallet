@@ -2,7 +2,7 @@ import * as TransactionService from "./transaction.service.js";
 import asyncHandler from "../../utils/asynchandler.js";
 
 
-export const transafer = asyncHandler(async (req, res) => {
+export const transfer = asyncHandler(async (req, res) => {
   const { recipientEmail, accountNumber, amount, description } = req.body;
 
   const transaction = await TransactionService.transfer({

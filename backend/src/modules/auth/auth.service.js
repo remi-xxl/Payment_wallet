@@ -9,6 +9,7 @@ import {
 import ApiError from "../../utils/ApiError.js";
 import { generateNUBAN } from "../../utils/nuban.js";
 import { env } from "../../config/env.js";
+import { registrationsTotal } from "../../config/metrics.js";
 
 export async function registerUser({ email, password, firstName, lastName }) {
   const exisitingUser = await prisma.user.findUnique({
@@ -63,6 +64,9 @@ export async function registerUser({ email, password, firstName, lastName }) {
   const refreshToken = generateRefreshToken(payload);
 
   await saveRefreshToken(user.id, refreshToken);
+
+  // Increment the registration counter
+  registrationsTotal.inc({ method: 'POST', route: '/api/auth/register' });
 
   return {
     user,

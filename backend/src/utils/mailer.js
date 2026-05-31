@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
+import logger from "../config/logger.js";
 
 const transporter = nodemailer.createTransport({
   host: env.email.host,
@@ -19,9 +20,9 @@ const transporter = nodemailer.createTransport({
 
 transporter.verify((error) => {
   if (error) {
-    console.error(" Email transporter error:", error.message);
+    logger.error("Email transporter error:", { error: error.message });
   } else {
-    console.log(" Email transporter ready");
+    logger.info("Email transporter ready");
   }
 });
 
@@ -190,12 +191,8 @@ export async function sendTransactionReceipt(data) {
 
   // nodemailer returns a "messageId" for each sent email
   // Log the Ethereal preview URLs so you can view the emails
-  console.log(
-    `📧 Sender receipt sent:   ${nodemailer.getTestMessageUrl(senderInfo)}`,
-  );
-  console.log(
-    `📧 Receiver receipt sent: ${nodemailer.getTestMessageUrl(receiverInfo)}`,
-  );
+  logger.info(`📧 Sender receipt sent: ${nodemailer.getTestMessageUrl(senderInfo)}`);
+  logger.info(`📧 Receiver receipt sent: ${nodemailer.getTestMessageUrl(receiverInfo)}`);
 
   return { senderInfo, receiverInfo };
 }
@@ -296,9 +293,7 @@ export async function sendMonthlyStatement(data) {
   };
 
   const info = await transporter.sendMail(mail);
-  console.log(
-    `📧 Monthly statement sent: ${nodemailer.getTestMessageUrl(info)}`,
-  );
+  logger.info(`📧 Monthly statement sent: ${nodemailer.getTestMessageUrl(info)}`);
 
   return info;
 }

@@ -5,6 +5,7 @@ import {
   clearCookieOptions,
   refreshTokenCookieOptions,
 } from "../../config/cookies.js";
+import logger from "../../config/logger.js";
 
 export const register = asyncHandler(async (req, res) => {
   const { user, tokens } = await authService.registerUser(req.body);
@@ -61,7 +62,7 @@ export const logout = asyncHandler(async (req, res) => {
   // req.session.destroy() removes the session row from the sessions table.
   req.session.destroy((err) => {
     if (err) {
-      console.error("Session destroy error:", err);
+      logger.error("Session destroy error:", err);
     }
   });
 

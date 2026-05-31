@@ -1,7 +1,15 @@
 import prisma from "../../utils/prisma.js";
 import ApiError from "../../utils/ApiError.js";
 import { emailQueue, fraudQueue } from "../../queues/index.js";
-
+import logger from "../../config/logger.js";
+import {
+  CacheKeys,
+  deleteCache,
+  deletePattern,
+  withCache,
+  CacheTTL,
+} from "../../utils/cache.js";
+import { transferFailureTotal, transferTotal, transferValueTotal } from "../../config/metrics.js";
 
 
 export async function transfer({
@@ -38,46 +46,46 @@ export async function transfer({
       );
     }
 
-      if(recipientEmail) {
+    if (recipientEmail) {
       //STEP 3: Find the recipent by email
-    const recipient = await tx.user.findUnique({
-      where: { email: recipientEmail },
-      select: {
-        id: true,
-        wallet: { select: { id: true } },
-      },
-    });
+      const recipient = await tx.user.findUnique({
+        where: { email: recipientEmail },
+        select: {
+          id: true,
+          wallet: { select: { id: true } },
+        },
+      });
 
-     if (!recipient) {
-      throw new ApiError(404, "Recipient not found");
-    }
-    //Sender can't money to sender
-    if (recipient.id === senderUserid) {
-      throw new ApiError(400, "You cannot transfer money to yourself");
-    }
-
-    if (!recipient.wallet) {
-      throw new ApiError(400, "Recipient does not have a wallet");
-    }
-
-    recipientWalletId = recipient.wallet.id;
-      } else {
-        const recipientWallet = await tx.wallet.findUnique({
-          where: { accountNumber},
-          select: { id: true, userId: true}
-        });
-
-        if(!recipientWallet) {
-          throw new ApiError(404, 'No wallet found with this account number')
-        }
-
-        if(recipientWallet.userId === senderUserid) {
-          throw new ApiError(400, "You cannot transfer money to yourself");
-        }
-
-        recipientWalletId = recipientWallet.id;
+      if (!recipient) {
+        throw new ApiError(404, "Recipient not found");
       }
-     
+      //Sender can't money to sender
+      if (recipient.id === senderUserid) {
+        throw new ApiError(400, "You cannot transfer money to yourself");
+      }
+
+      if (!recipient.wallet) {
+        throw new ApiError(400, "Recipient does not have a wallet");
+      }
+
+      recipientWalletId = recipient.wallet.id;
+    } else {
+      const recipientWallet = await tx.wallet.findUnique({
+        where: { accountNumber },
+        select: { id: true, userId: true },
+      });
+
+      if (!recipientWallet) {
+        throw new ApiError(404, "No wallet found with this account number");
+      }
+
+      if (recipientWallet.userId === senderUserid) {
+        throw new ApiError(400, "You cannot transfer money to yourself");
+      }
+
+      recipientWalletId = recipientWallet.id;
+    }
+
     // STEP 4: Deduct from sender
     //   UPDATE wallets SET balance = balance - amount WHERE id = ?
     // This is safe because the subtraction happens INSIDE the database,
@@ -105,28 +113,63 @@ export async function transfer({
         senderWalletId: senderWallet.id,
         receiverWalletId: recipientWalletId,
       },
+      
     });
+    transferTotal.inc();
+
+    transferValueTotal.inc(amount * 100);
+
+    transferFailureTotal.inc({ reason: 'insufficient_balance'})
 
     return newTransaction;
   });
 
   //Background job
 
-  const [sender, receiver] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: senderUserid}
-    }),
-    prisma.wallet.findUnique({
-      where:{ id: recipientWalletId},
-      select: {
-        user: {
-          select: {email: true, firstName: true, lastName: true},
-        }
-      }
-    })
+  await Promise.all([
+    // Delete sender's cached wallet
+    deleteCache(CacheKeys.wallet(senderUserid)),
+
+    // Delete receiver's cached wallet
+    // We need to find receiver's userId first
+    deleteCache(
+      CacheKeys.wallet(
+        recipientEmail
+          ? (
+              await prisma.user.findUnique({
+                where: { email: recipientEmail },
+                select: { id: true },
+              })
+            )?.id
+          : (
+              await prisma.wallet.findUnique({
+                where: { accountNumber },
+                select: { userId: true },
+              })
+            )?.userId,
+      ),
+    ),
+
+    // Delete ALL cached transaction pages for sender
+    // because their history just gained a new transaction
+    deletePattern(`transactions:${senderUserid}:*`),
   ]);
 
-  await emailQueue.add('transaction-receipt', {
+  const [sender, receiver] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: senderUserid },
+    }),
+    prisma.wallet.findUnique({
+      where: { id: recipientWalletId },
+      select: {
+        user: {
+          select: { email: true, firstName: true, lastName: true },
+        },
+      },
+    }),
+  ]);
+
+  await emailQueue.add("transaction-receipt", {
     senderEmail: sender.email,
     senderName: `${sender.firstName} ${sender.lastName}`,
     receiverEmail: receiver.user.email,
@@ -134,97 +177,100 @@ export async function transfer({
     amount: amount,
     transactionId: transaction.id,
     description: description,
-    createdAt: transaction.createdAt
+    createdAt: transaction.createdAt,
   });
 
-  await fraudQueue.add('check-transaction', {
+  logger.info(`Email job queued `, { transactionId: transaction.id });
+
+  await fraudQueue.add("check-transaction", {
     transactionId: transaction.id,
     walletId: transaction.senderWalletId,
     amount,
-  })
+  });
 
-
-console.log(`[TransactionService] Fraud check queued queued for transaction: ${transaction.id}`);
+  logger.info("Fraud check queued", { transactionId: transaction.id });
 
   //If ANY step above throws an error , NOTHING was saved
   return transaction;
-
 }
-
 
 //PAGINATION
 export async function getTransactionHistory({ userId, page, limit }) {
-  const wallet = await prisma.wallet.findUnique({
-    where: { userId },
-    select: { id: true },
-  });
+  return withCache(
+    CacheKeys.transactions(userId, page, limit),
+    CacheTTL.transactions,
+    async () => {
+      const wallet = await prisma.wallet.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
 
-  if (!wallet) {
-    throw new ApiError(404, "Wallet not found");
-  }
+      if (!wallet) {
+        throw new ApiError(404, "Wallet not found");
+      }
 
-  const skip = (page - 1) * limit;
+      const skip = (page - 1) * limit;
 
-  const whereClause = {
-    OR: [{ senderWalletId: wallet.id }, { receiverWalletId: wallet.id }],
-  };
-  //Note To self
-  // We run TWO queries at the same time using Promise.all.
-  // Promise.all takes an array of promises and runs them IN PARALLEL.
-  // If we ran them one after the other (sequentially) it would take 2x longer.
-  // With Promise.all both queries hit the database simultaneously.
-  const [total, transactions] = await Promise.all([
-    prisma.transaction.count({
-      where: whereClause,
-    }),
+      const whereClause = {
+        OR: [{ senderWalletId: wallet.id }, { receiverWalletId: wallet.id }],
+      };
+      //Note To self
+      // We run TWO queries at the same time using Promise.all.
+      // Promise.all takes an array of promises and runs them IN PARALLEL.
+      // If we ran them one after the other (sequentially) it would take 2x longer.
+      // With Promise.all both queries hit the database simultaneously.
+      const [total, transactions] = await Promise.all([
+        prisma.transaction.count({
+          where: whereClause,
+        }),
 
-    prisma.transaction.findMany({
-      where: whereClause,
-      orderBy: { createdAt: "desc" },
+        prisma.transaction.findMany({
+          where: whereClause,
+          orderBy: { createdAt: "desc" },
 
-      // skip = how many records to jump over
-      // take = how many records to return
-      skip,
-      take: limit,
-      include: {
-        senderWallet: {
-          select: {
-            user: {
-              select: { firstName: true, lastName: true, email: true },
+          // skip = how many records to jump over
+          // take = how many records to return
+          skip,
+          take: limit,
+          include: {
+            senderWallet: {
+              select: {
+                user: {
+                  select: { firstName: true, lastName: true, email: true },
+                },
+              },
+            },
+            receiverWallet: {
+              select: {
+                user: {
+                  select: { firstName: true, lastName: true, email: true },
+                },
+              },
             },
           },
-        },
-        receiverWallet: {
-          select: {
-            user: {
-              select: { firstName: true, lastName: true, email: true },
-            },
-          },
-        },
-      },
-    }),
-  ]);
+        }),
+      ]);
 
-  return {
-    transactions,
-    pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total/ limit),
-        hasNextPage: page * limit < total,
-        hasPrevPage: page > 1,
-    }
-  }
+      return {
+        transactions,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+          hasNextPage: page * limit < total,
+          hasPrevPage: page > 1,
+        },
+      };
+    },
+  );
 }
 
-
-export async function getTransactionById ({transactionId, userId}) {
-
+export async function getTransactionById({ transactionId, userId }) {
   const wallet = await prisma.wallet.findUnique({
-    where: {userId}
-  })
-  if(!wallet) {
-    throw new ApiError(404, 'Wallet not found')
+    where: { userId },
+  });
+  if (!wallet) {
+    throw new ApiError(404, "Wallet not found");
   }
 }

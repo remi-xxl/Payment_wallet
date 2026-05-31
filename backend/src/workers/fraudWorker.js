@@ -1,11 +1,16 @@
 import { Worker } from "bullmq";
+
 import { createRedisConnection } from "../config/redis.js";
 import prisma from '../utils/prisma.js';
 import { runFraudChecks } from "../utils/fraudRules.js";
+import logger from "../config/logger.js";
+import { fraudAlertsTotal } from "../config/metrics.js";
+// Prometheus Counter for fraud alerts
+
 
 
 async function processFraudJob(job) {
-  console.log(`[FraudWorker] Processing job: ${job.name} (ID: ${job.id})`);
+  logger.info('Processing fraud job', { jobId: job.id, jobName: job.name });
 
   const { transactionId, walletId, amount } = job.data;
 
@@ -22,14 +27,18 @@ async function processFraudJob(job) {
 
       // STEP 2: If no alerts — transaction is clean
       if (alerts.length === 0) {
-        console.log(`[FraudWorker] ✅ Transaction ${transactionId} is clean`);
+        logger.info('Processing fraud job', { jobId: job.id});
         break;
       }
 
       // STEP 3: Fraud detected — log all alerts
-      console.warn(`[FraudWorker] 🚨 ${alerts.length} alert(s) for transaction ${transactionId}`);
+      logger.warn('Fraud detected', { jobId: job.id, transactionId, alertCount: alerts.length });
       alerts.forEach((alert) => {
-        console.warn(`  → [${alert.severity}] ${alert.rule}: ${alert.reason}`);
+        logger.warn(`  → [${alert.severity}] ${alert.rule}: ${alert.reason}`);
+        fraudAlertsTotal.inc({
+          rule: alert.rule,
+          severity: alert.severity,
+        });
       });
 
       // STEP 4: Save all fraud alerts to the database
@@ -67,8 +76,8 @@ async function processFraudJob(job) {
       //   → Create a support ticket for manual review
       // We log these as reminders
       if (highestAlert.severity === 'HIGH') {
-        console.warn(`[FraudWorker]  HIGH severity — account should be frozen`);
-        console.warn(`[FraudWorker] Compliance team should be notified`);
+        logger.warn('HIGH severity — account should be frozen', { jobId: job.id, transactionId });
+        logger.warn('Compliance team should be notified', { jobId: job.id, transactionId });
       }
 
       break;
@@ -97,16 +106,15 @@ export const fraudWorker = new Worker(
 
 // Event listeners
 fraudWorker.on('completed', (job) => {
-  console.log(`[FraudWorker] ✅ Job completed: ${job.name} (ID: ${job.id})`);
+  logger.info('Job completed', { jobId: job.id, jobName: job.name });
 });
 
 fraudWorker.on('failed', (job, err) => {
-  console.error(`[FraudWorker] ❌ Job failed: ${job.name} (ID: ${job.id})`);
-  console.error(`[FraudWorker] Error: ${err.message}`);
+  logger.error('Job failed', { jobId: job.id, jobName: job.name, error: err.message });
 });
 
 fraudWorker.on('error', (err) => {
-  console.error('[FraudWorker] Worker error:', err.message);
+  logger.error('Worker error:', { error: err.message });
 });
 
-console.log('✅ Fraud worker started and listening for jobs');
+logger.info('✅ Fraud worker started and listening for jobs');
