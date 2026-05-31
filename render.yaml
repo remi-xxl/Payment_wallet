@@ -33,8 +33,9 @@ services:
       - key: SMTP_PASS
         sync: false
 
-  - type: static_site
+  - type: web
     name: payfast-frontend
+    env: static
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
