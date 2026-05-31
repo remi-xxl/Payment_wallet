@@ -4,6 +4,7 @@ import {
   sendTransactionReceipt,
   sendMonthlyStatement,
 } from "../utils/mailer.js";
+import logger from "../config/logger.js";
 
 // WHAT IS HAPPENING HERE?
 // A Worker connects to Redis and listens to a specific queue.
@@ -17,20 +18,17 @@ import {
 //   job.name = "transaction-receipt" → send receipt emails
 //   job.name = "monthly-statement"   → send statement email
 async function processEmailJob(job) {
-  console.log(`[EmailWorker] processing job : ${job.name}`);
-
+ logger.info('processing email job', { jobName: job.name, jobId: job.id})
   switch (job.name) {
     case "transaction-receipt": {
       await sendTransactionReceipt(job.data);
-      console.log(
-        `[EmailWorker] Receipt sent for transaction: ${job.data.transactionId}`,
-      );
+      logger.info(`[EmailWorker] Receipt sent for transaction: ${job.data.transactionId}`, { jobId: job.id });
       break;
     }
 
     case "monthly-statement": {
       await sendMonthlyStatement(job.data);
-      console.log(`[EmailWorker] Receipt sent to : ${job.data.userEmail}`);
+      logger.info(`[EmailWorker] Statement sent to: ${job.data.userEmail}`, { jobId: job.id });
       break;
     }
 
@@ -50,16 +48,16 @@ export const emailWorker = new Worker("email", processEmailJob, {
 //---WORKER EVENT LISTENER----
 
 emailWorker.on('completed', (job) => {
-    console.log(`[EmailWorker] Job completed: ${job.name} (ID:${job.id})`)
+    logger.info(`[EmailWorker] Job completed: ${job.name} (ID:${job.id})`)
 });
 
 emailWorker.on('failed', (job,err) => {
-    console.error(`[EmailWorker] Job failed: ${job.name}(ID: ${job.id})`);
-    console.error(`[EmailWorker] Error: ${err.message}`)
+    logger.error(`[EmailWorker] Job failed: ${job.name}(ID: ${job.id})`);
+    logger.error(`[EmailWorker] Error: ${err.message}`)
 })
 
 emailWorker.on('error' ,(err) => {
-    console.error('[EmailWorker] Worker error:', err.message);
+logger.error('Email worker error', {error: err.message} )
 });
 
-console.log('Email WOrker started and listening for jobs')
+logger.info('✅ Email worker started and listening for jobs');

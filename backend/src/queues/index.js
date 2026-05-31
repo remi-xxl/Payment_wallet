@@ -1,5 +1,6 @@
 import { Queue} from 'bullmq';
 import { createRedisConnection } from '../config/redis.js';
+import logger from '../config/logger.js';
 
 
 // WHY WE CREATE QUEUES HERE IN ONE PLACE:
@@ -80,14 +81,14 @@ export const fraudQueue = new Queue('fraud', {
 
 // Log when queues are ready
 emailQueue.on('error', (err) => {
-  console.error('[EmailQueue] Error:', err.message);
+  logger.error('[EmailQueue] Error:', { error: err.message });
 });
 
 fraudQueue.on('error', (err) => {
-  console.error('[FraudQueue] Error:', err.message);
+  logger.error('[FraudQueue] Error:', { error: err.message });
 });
 
-console.log('✅ Queues initialized');
+logger.info('✅ Queues initialized');
 
 
 // // TEMPORARY — delete after confirming it works

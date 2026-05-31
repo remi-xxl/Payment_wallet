@@ -30,6 +30,7 @@ model User  {
   refreshTOkens RefreshToken[]
   
   @@map("users")
+  @@index([createdAt])
 }
 
 
@@ -81,8 +82,8 @@ model Transaction {
   updatedAt DateTime @updatedAt
 
 
-  @@index([senderWalletId])
-  @@index([receiverWalletId])
+  @@index([senderWalletId, createdAt])
+  @@index([receiverWalletId, createdAt])
   @@map("transaction")
 }
 

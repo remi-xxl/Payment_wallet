@@ -1,11 +1,21 @@
 import ApiError from "../utils/ApiError.js";
 import { env } from "../config/env.js";
-
+import logger from "../config/logger.js";
 
 
 
 export function errorHandler(err, req,res, next) {
-    console.log(`[ERROR] ${err.message}`);
+    logger.error(
+        'Request error',{
+            requestId: req.requestId,
+            message: err.message,
+            stack: err.stack,
+            path: req.path,
+            method: req.method,
+            userId: req.user?.userId,
+            statusCode: err.statusCode,
+        }
+    );
 
     if(err instanceof ApiError) {
         return res.status(err.statusCode).json({

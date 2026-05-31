@@ -1,5 +1,6 @@
 import {Redis} from 'ioredis';
 import { env } from './env.js';
+import logger from './logger.js';
 
 
 export function createRedisConnection() {
@@ -11,7 +12,7 @@ export function createRedisConnection() {
 
         retryStrategy(times) {
             const delay = Math.min(times * 1000, 2000);
-            console.log(`Redis reconnecting... attempt ${times}`)
+            logger.warn(`Redis reconnecting... attempt ${times}`);
             return delay;
         }
 

@@ -2,7 +2,7 @@ import { Router } from "express";
 import authRoutes from '../../modules/auth/auth.routes.js'
 import walletRoutes from '../../modules/wallet/wallet.routes.js'
 import transactionRoutes from '../../modules/transaction/transaction.routes.js'
-import { version } from "react";
+
 
 
 const v1Router = Router();

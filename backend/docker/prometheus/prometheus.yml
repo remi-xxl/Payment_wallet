@@ -1,0 +1,24 @@
+# docker/prometheus/prometheus.yml
+global:
+  # How often Prometheus collects metrics from targets
+  scrape_interval: 15s
+
+  # How often Prometheus evaluates alerting rules
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Scrape our Express API
+  - job_name: 'fintech-api'
+    static_configs:
+      - targets: ['app:5555']
+        labels:
+          service: 'fintech-api'
+          env:     'production'
+
+    # Path where metrics are exposed
+    metrics_path: '/metrics'
+
+  # Scrape Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

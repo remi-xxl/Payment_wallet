@@ -12,22 +12,20 @@ import { env } from "./env.js";
 
 const pgSession = connectPgSimple(session);
 
-export const sesssionMiddleware = session({
+export const sessionMiddleware = session({
   store: new pgSession({
     conString: env.database,
 
-    // The table name where sessions are stored.
-    // connect-pg-simple will CREATE this table automatically.
+    schemaName: "public",
 
     tableName: "session",
 
-     createTableIfMissing: true,
-    // How often to delete expired sessions from the database (in seconds).
-    // 86400 = once per day
+    createTableIfMissing: true,
 
     pruneSessionInterval: 86400,
   }),
 
+  
   // The table name where sessions are stored.
   // connect-pg-simple will CREATE this table automatically.
   secret: env.sessionSecret,

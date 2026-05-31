@@ -1,5 +1,7 @@
 
 
+import logger from "../config/logger.js";
+
 export function deprecateVersion(sunsetDate, successorVersion) {
     return (req,res, next) => {
         res.set('Deprecation', true);
@@ -12,6 +14,7 @@ export function deprecateVersion(sunsetDate, successorVersion) {
             res.set('Link', `</api${successorVersion}>; rel="successor-version`)
         };
         
-        console.warn(`[Deprecation] ${req.method} ${req.path} called on deprecated version`)
+        logger.warn(`[Deprecation] ${req.method} ${req.path} called on deprecated version`)
     }
 }
+
