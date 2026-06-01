@@ -1,3 +1,4 @@
+import { execSync } from 'child_process';
 import app from './app.js';
 import { env } from './config/env.js';
 import logger from './config/logger.js';
@@ -5,11 +6,16 @@ import prisma from './utils/prisma.js';
 import { emailWorker } from './workers/emailWorker.js';
 import { fraudWorker } from './workers/fraudWorker.js';
 
-
-
+// Run schema sync on every startup so tables exist in production
+try {
+  execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
+  logger.info('Database schema synced');
+} catch (err) {
+  logger.error('Schema sync failed', { error: err.message });
+  process.exit(1);
+}
 
 const server = app.listen(env.port, () => {
-
     logger.info(`Server is running on http://localhost:${env.port}`)
 });
 
