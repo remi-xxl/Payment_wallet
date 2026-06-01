@@ -4,12 +4,12 @@ import rateLimit from 'express-rate-limit';
 export const corsOption = {
     origin: [
     'http://localhost:3000',
-    'http://localhost:5173', 
-    'http://localhost:5500', 
+    'http://localhost:5173',
+    'http://localhost:5500',
+    ...(process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : []),
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH' , 'DELETE'],
-
-    allowedHeader: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
 

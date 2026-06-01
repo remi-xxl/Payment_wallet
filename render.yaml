@@ -4,8 +4,8 @@ services:
     env: node
     region: ohio
     rootDir: backend
-    buildCommand: npm ci && npx prisma generate && npx prisma db push --accept-data-loss
-    startCommand: node src/server.js
+    buildCommand: npm ci && npx prisma generate
+    startCommand: npx prisma db push --accept-data-loss && node src/server.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -28,6 +28,8 @@ services:
         sync: false
       - key: SMTP_PORT
         sync: false
+      - key: CORS_ORIGIN
+        value: https://payfast-dbej.onrender.com
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS
@@ -45,4 +47,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://payfast-api.onrender.com/api/v1
+        value: https://payment-wallet-mnf7.onrender.com/api/v1
